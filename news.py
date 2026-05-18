@@ -1,8 +1,7 @@
 import os
 import requests
 from ai_engine import ai_news
-
-posted = []
+from design_engine import create_news_card
 
 
 def post_news():
@@ -17,23 +16,29 @@ def post_news():
 
         news = data["Data"][0]
 
-        if news["url"] in posted:
-            return
+        title = news["title"]
+        body = news["body"]
 
-        posted.append(news["url"])
+        # 🧠 AI TEXT
+        ai_text = ai_news(title, body)
 
-        ai_post = ai_news(news["title"], news["body"])
+        # 🎨 IMAGE (news card)
+        img = create_news_card(title)
 
+        # 📡 Telegram send
         TOKEN = os.getenv("BOT_TOKEN")
         CHAT_ID = os.getenv("CHAT_ID")
 
+        url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+
         requests.post(
-            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+            url,
             data={
                 "chat_id": CHAT_ID,
-                "text": ai_post,
+                "caption": ai_text,
                 "parse_mode": "HTML"
-            }
+            },
+            files={"photo": img}
         )
 
     except Exception as e:
