@@ -10,9 +10,8 @@ LIMIT = 200
 
 posted = []
 
-
 # =========================
-# SAFE DATA FETCH
+# GET DATA SAFE
 # =========================
 def get_data():
     try:
@@ -20,21 +19,14 @@ def get_data():
         res = requests.get(url, timeout=10)
         data = res.json()
 
-        # must be list
-        if not isinstance(data, list):
-            return None
-
-        if len(data) == 0:
+        if not isinstance(data, list) or len(data) == 0:
             return None
 
         df = pd.DataFrame(data)
-
-        # Binance structure fix
         df = df.iloc[:, 0:6]
         df.columns = ["t","o","h","l","c","v"]
 
         df["c"] = df["c"].astype(float)
-
         return df
 
     except:
@@ -66,12 +58,12 @@ def indicators(df):
 
 
 # =========================
-# CHART IMAGE
+# CHART
 # =========================
 def create_chart(df):
     plt.figure(figsize=(8,4))
     plt.plot(df["c"].tail(50))
-    plt.title("BTC AI Signal")
+    plt.title("AI Signal Chart")
 
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
@@ -87,16 +79,15 @@ def generate_signal():
 
     df = get_data()
 
-    # safety check
-    if df is None or len(df) < 50:
+    if df is None or df.empty or len(df) < 50:
         return None
 
     df = indicators(df)
 
-    if df is None or len(df) < 50:
+    if df is None or df.empty:
         return None
 
-    last = df.iloc[-1]
+    last = df.tail(1).iloc[0]
 
     price = last["c"]
 
@@ -136,15 +127,13 @@ def generate_signal():
 🎯 TP: {tp:.2f}
 
 ⏰ {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC
-
-#Crypto #Signal
 """
 
     return caption, img
 
 
 # =========================
-# TELEGRAM PHOTO SENDER
+# TELEGRAM PHOTO
 # =========================
 def send_signal_photo(caption, image):
     try:
