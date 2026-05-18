@@ -1,83 +1,59 @@
+import os
 import time
 import threading
 import schedule
+from flask import Flask
 
 from news import post_news
-from market import get_market_overview
-from signals import generate_signal, send_signal_photo
+from market import post_market
+from airdrop import post_airdrop
+from exchange import post_exchange
 
 
 # =========================
-# 🔥 STARTUP LOG
+# 🌐 FLASK APP (RENDER KEEP ALIVE)
 # =========================
-print("🚀 AI Crypto Media Bot Starting...")
+app = Flask(__name__)
 
 
-# =========================
-# 📰 NEWS JOB
-# =========================
-def news_job():
-    try:
-        post_news()
-    except Exception as e:
-        print("News job error:", e)
+@app.route("/")
+def home():
+    return "🚀 Crypto Media Bot is Running"
 
 
-# =========================
-# 📊 MARKET JOB
-# =========================
-def market_job():
-    try:
-        get_market_overview()
-    except Exception as e:
-        print("Market job error:", e)
+@app.route("/health")
+def health():
+    return "OK"
 
 
 # =========================
-# 📈 SIGNAL JOB
+# 🔥 BACKGROUND TASKS
 # =========================
-def signal_job():
-    try:
-        result = generate_signal()
+def start_scheduler():
+    print("🚀 Scheduler started...")
 
-        if result is None:
-            return
+    schedule.every(30).minutes.do(post_news)
+    schedule.every(3).hours.do(post_market)
+    schedule.every(2).hours.do(post_airdrop)
+    schedule.every(1).hours.do(post_exchange)
 
-        caption, image = result
-
-        send_signal_photo(caption, image)
-
-    except Exception as e:
-        print("Signal job error:", e)
-
-
-# =========================
-# ⏰ SCHEDULER SETUP
-# =========================
-schedule.every(30).minutes.do(news_job)     # 📰 News
-schedule.every(3).hours.do(market_job)      # 📊 Market
-schedule.every(15).minutes.do(signal_job)   # 📈 Signals
-
-
-# =========================
-# 🔁 BACKGROUND LOOP
-# =========================
-def run_scheduler():
     while True:
         schedule.run_pending()
         time.sleep(1)
 
 
 # =========================
-# 🚀 MAIN START
+# 🚀 START APP
 # =========================
 if __name__ == "__main__":
-    thread = threading.Thread(target=run_scheduler)
-    thread.daemon = True
-    thread.start()
+    print("🔥 Starting AI Crypto Media Bot...")
 
-    print("✅ Bot is running...")
+    # background thread
+    t = threading.Thread(target=start_scheduler)
+    t.daemon = True
+    t.start()
 
-    # keep alive (Render/UptimeRobot friendly)
-    while True:
-        time.sleep(60)
+    # Render port fix
+    port = int(os.environ.get("PORT", 10000))
+
+    app.run(host="0.0.0.0", port=port)
