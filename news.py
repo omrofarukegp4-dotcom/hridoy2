@@ -4,20 +4,29 @@ import requests
 posted = []
 
 def post_news():
-    url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
-    res = requests.get(url).json()
+    try:
+        url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
+        res = requests.get(url, timeout=10)
 
-    if "Data" not in res:
-        return
+        if res.status_code != 200:
+            return
 
-    news = res["Data"][0]
+        data = res.json()
 
-    if news["url"] in posted:
-        return
+        if not data or "Data" not in data:
+            return
 
-    posted.append(news["url"])
+        if len(data["Data"]) == 0:
+            return
 
-    msg = f"""
+        news = data["Data"][0]
+
+        if news["url"] in posted:
+            return
+
+        posted.append(news["url"])
+
+        msg = f"""
 📰 CRYPTO NEWS
 
 {news['title']}
@@ -27,10 +36,13 @@ def post_news():
 #CryptoNews
 """
 
-    TOKEN = os.getenv("BOT_TOKEN")
-    CHAT_ID = os.getenv("CHAT_ID")
+        TOKEN = os.getenv("BOT_TOKEN")
+        CHAT_ID = os.getenv("CHAT_ID")
 
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={"chat_id": CHAT_ID, "text": msg}
-    )
+        requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+            data={"chat_id": CHAT_ID, "text": msg}
+        )
+
+    except Exception as e:
+        print("News error:", e)
