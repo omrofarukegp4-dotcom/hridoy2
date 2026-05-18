@@ -1,6 +1,9 @@
 flask
 requests
 schedule
+feedparser
+beautifulsoup4
 pandas
-numpy
 matplotlib
+numpy
+openai
