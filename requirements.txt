@@ -1,5 +1,10 @@
+flask
 requests
 schedule
+pandas
+numpy
+matplotlib
 feedparser
 beautifulsoup4
-flask
+lxml
+openai
