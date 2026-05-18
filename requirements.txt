@@ -4,7 +4,3 @@ schedule
 pandas
 numpy
 matplotlib
-feedparser
-beautifulsoup4
-lxml
-openai
