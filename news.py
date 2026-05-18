@@ -1,22 +1,18 @@
 import os
 import requests
+from ai_engine import ai_news
 
 posted = []
+
 
 def post_news():
     try:
         url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
         res = requests.get(url, timeout=10)
 
-        if res.status_code != 200:
-            return
-
         data = res.json()
 
-        if not data or "Data" not in data:
-            return
-
-        if len(data["Data"]) == 0:
+        if "Data" not in data or len(data["Data"]) == 0:
             return
 
         news = data["Data"][0]
@@ -26,22 +22,18 @@ def post_news():
 
         posted.append(news["url"])
 
-        msg = f"""
-📰 CRYPTO NEWS
-
-{news['title']}
-
-{news['body'][:200]}...
-
-#CryptoNews
-"""
+        ai_post = ai_news(news["title"], news["body"])
 
         TOKEN = os.getenv("BOT_TOKEN")
         CHAT_ID = os.getenv("CHAT_ID")
 
         requests.post(
             f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-            data={"chat_id": CHAT_ID, "text": msg}
+            data={
+                "chat_id": CHAT_ID,
+                "text": ai_post,
+                "parse_mode": "HTML"
+            }
         )
 
     except Exception as e:
