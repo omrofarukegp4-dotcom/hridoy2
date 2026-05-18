@@ -4,11 +4,21 @@ import schedule
 import time
 import feedparser
 from bs4 import BeautifulSoup
+from flask import Flask
+import threading
 
-# Render এর Environment Variables থেকে ডেটা নেওয়া হচ্ছে
+app = Flask(__name__)
+
+@app.route('/web')
+def home():
+    return "Bot is running perfectly on /web!"
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
 TOKEN = os.getenv('TOKEN')
 CHAT_ID = os.getenv('CHAT_ID')
-
 
 NEWS_FEEDS = [
     'https://coingape.com/feed/',
@@ -16,14 +26,12 @@ NEWS_FEEDS = [
     'https://www.coindesk.com/arc/outboundfeeds/rss/'
 ]
 AIRDROP_FEED = 'https://airdrops.io/feed/'
-EXCHANGE_FEED = 'https://cryptonews.com/news/exchange-news/feed/' # এক্সচেঞ্জ ইভেন্ট ও আপডেটের সোর্স
+EXCHANGE_FEED = 'https://cryptonews.com/news/exchange-news/feed/'
 
-# ডুপ্লিকেট পোস্ট এড়ানোর জন্য লিস্ট
 posted_news_links = []
 posted_airdrop_links = []
 posted_exchange_links = []
 
-# --- ডেটা সংগ্রহ করার ফাংশন ---
 def get_feed_data(rss_url):
     try:
         feed = feedparser.parse(rss_url)
@@ -49,10 +57,9 @@ def get_feed_data(rss_url):
                 
         return {"title": title, "link": link, "summary": summary, "image": image_url}
     except Exception as e:
-        print(f"ডেটা আনতে সমস্যা ({rss_url}):", e)
+        print(f"Error ({rss_url}):", e)
         return None
 
-# --- মেসেজ টেলিগ্রামে পাঠানোর ফাংশন ---
 def send_to_telegram(data, caption):
     try:
         if data['image']:
@@ -65,10 +72,9 @@ def send_to_telegram(data, caption):
         response = requests.post(api_url, data=payload)
         return response.status_code == 200
     except Exception as e:
-        print("টেলিগ্রামে পাঠাতে সমস্যা:", e)
+        print("Telegram error:", e)
         return False
 
-# --- ১. নিউজ পোস্ট করার ফাংশন ---
 def post_news():
     global posted_news_links
     for url in NEWS_FEEDS:
@@ -79,13 +85,12 @@ def post_news():
                 f"🗞 {news['summary']}"
             )
             if send_to_telegram(news, caption):
-                print(f"✅ নিউজ পোস্ট হয়েছে: {news['title']}")
+                print(f"Success: {news['title']}")
                 posted_news_links.append(news['link'])
                 if len(posted_news_links) > 50:
                     posted_news_links.pop(0)
             time.sleep(3)
 
-# --- ২. এয়ারড্রপ পোস্ট করার ফাংশন ---
 def post_airdrop():
     global posted_airdrop_links
     airdrop = get_feed_data(AIRDROP_FEED)
@@ -96,39 +101,41 @@ def post_airdrop():
             f"⚠️ *Don't miss out on this opportunity!*"
         )
         if send_to_telegram(airdrop, caption):
-            print(f"✅ এয়ারড্রপ পোস্ট হয়েছে: {airdrop['title']}")
+            print(f"Success: {airdrop['title']}")
             posted_airdrop_links.append(airdrop['link'])
             if len(posted_airdrop_links) > 20:
                 posted_airdrop_links.pop(0)
 
-# --- ৩. এক্সচেঞ্জ ইভেন্ট পোস্ট করার ফাংশন ---
 def post_exchange_event():
     global posted_exchange_links
     event = get_feed_data(EXCHANGE_FEED)
     if event and event['link'] not in posted_exchange_links:
-        # এক্সচেঞ্জ ইভেন্টের স্পেশাল ফরম্যাট (লিংক ছাড়া)
         caption = (
             f"🏦 **Exchange Update & Event: {event['title']}**\n\n"
             f"📅 **Details:**\n{event['summary']}\n\n"
             f"📢 *Stay updated with market events!*"
         )
         if send_to_telegram(event, caption):
-            print(f"✅ এক্সচেঞ্জ ইভেন্ট পোস্ট হয়েছে: {event['title']}")
+            print(f"Success: {event['title']}")
             posted_exchange_links.append(event['link'])
             if len(posted_exchange_links) > 20:
                 posted_exchange_links.pop(0)
 
-# --- শিডিউল সেট করা ---
-schedule.every(10).minutes.do(post_news)           # প্রতি ১০ মিনিটে নিউজ চেক করবে
-schedule.every(1).hours.do(post_airdrop)           # প্রতি ১ ঘণ্টায় এয়ারড্রপ চেক করবে
-schedule.every(2).hours.do(post_exchange_event)    # প্রতি ২ ঘণ্টায় এক্সচেঞ্জ ইভেন্ট চেক করবে
+schedule.every(10).minutes.do(post_news)
+schedule.every(1).hours.do(post_airdrop)
+schedule.every(2).hours.do(post_exchange_event)
 
-print("🤖 Multi-Task Crypto Bot (News + Airdrop + Exchange Events) চালু হয়েছে...")
-post_news()
-post_airdrop()
-post_exchange_event()
-
-# লুপ
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+if __name__ == "__main__":
+    print("Bot starting...")
+    
+    post_news()
+    post_airdrop()
+    post_exchange_event()
+    
+    server_thread = threading.Thread(target=run_web_server)
+    server_thread.daemon = True
+    server_thread.start()
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
