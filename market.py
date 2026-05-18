@@ -9,9 +9,8 @@ def get_market_overview():
 
         data = res.json()
 
-        # safety check
         if not isinstance(data, dict) or "data" not in data:
-            return "📊 Market data temporarily unavailable"
+            return "📊 Market unavailable"
 
         mc = data["data"]["total_market_cap"]["usd"]
         vol = data["data"]["total_volume"]["usd"]
@@ -27,5 +26,5 @@ def get_market_overview():
 #MarketUpdate
 """
 
-    except Exception as e:
-        return "📊 Market service unavailable"
+    except:
+        return "📊 Market error"
