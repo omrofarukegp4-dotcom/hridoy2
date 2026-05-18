@@ -10,52 +10,74 @@ LIMIT = 200
 
 posted = []
 
+
 # =========================
-# DATA
+# SAFE DATA FETCH
 # =========================
 def get_data():
-    url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval=15m&limit={LIMIT}"
-    data = requests.get(url).json()
+    try:
+        url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval=15m&limit={LIMIT}"
+        res = requests.get(url, timeout=10)
+        data = res.json()
 
-    df = pd.DataFrame(data, columns=[
-        "t","o","h","l","c","v",
-        "ct","q","n","tb","tq","i"
-    ])
+        # must be list
+        if not isinstance(data, list):
+            return None
 
-    df["c"] = df["c"].astype(float)
-    return df
+        if len(data) == 0:
+            return None
+
+        df = pd.DataFrame(data)
+
+        # Binance structure fix
+        df = df.iloc[:, 0:6]
+        df.columns = ["t","o","h","l","c","v"]
+
+        df["c"] = df["c"].astype(float)
+
+        return df
+
+    except:
+        return None
+
 
 # =========================
 # INDICATORS
 # =========================
 def indicators(df):
-    delta = df["c"].diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
+    try:
+        delta = df["c"].diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
 
-    rs = gain.rolling(14).mean() / loss.rolling(14).mean()
-    df["RSI"] = 100 - (100 / (1 + rs))
+        rs = gain.rolling(14).mean() / loss.rolling(14).mean()
+        df["RSI"] = 100 - (100 / (1 + rs))
 
-    ema12 = df["c"].ewm(span=12).mean()
-    ema26 = df["c"].ewm(span=26).mean()
+        ema12 = df["c"].ewm(span=12).mean()
+        ema26 = df["c"].ewm(span=26).mean()
 
-    df["MACD"] = ema12 - ema26
-    df["SIGNAL"] = df["MACD"].ewm(span=9).mean()
+        df["MACD"] = ema12 - ema26
+        df["SIGNAL"] = df["MACD"].ewm(span=9).mean()
 
-    return df
+        return df
+
+    except:
+        return None
+
 
 # =========================
-# CHART
+# CHART IMAGE
 # =========================
 def create_chart(df):
     plt.figure(figsize=(8,4))
     plt.plot(df["c"].tail(50))
-    plt.title("BTC Signal Chart")
+    plt.title("BTC AI Signal")
 
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
     buf.seek(0)
     return buf
+
 
 # =========================
 # SIGNAL ENGINE
@@ -63,7 +85,17 @@ def create_chart(df):
 def generate_signal():
     global posted
 
-    df = indicators(get_data())
+    df = get_data()
+
+    # safety check
+    if df is None or len(df) < 50:
+        return None
+
+    df = indicators(df)
+
+    if df is None or len(df) < 50:
+        return None
+
     last = df.iloc[-1]
 
     price = last["c"]
@@ -79,6 +111,7 @@ def generate_signal():
         direction = "SHORT"
         sl = price * 1.02
         tp = price * 0.96
+
     else:
         return None
 
@@ -94,30 +127,37 @@ def generate_signal():
     img = create_chart(df)
 
     caption = f"""
-🚀 <b>AI SIGNAL</b>
+🚀 AI SIGNAL
 
-Pair: {SYMBOL}
-Direction: {direction}
-Entry: {price:.2f}
-SL: {sl:.2f}
-TP: {tp:.2f}
+📊 Pair: {SYMBOL}
+📈 Direction: {direction}
+💰 Entry: {price:.2f}
+🛑 SL: {sl:.2f}
+🎯 TP: {tp:.2f}
 
 ⏰ {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC
+
+#Crypto #Signal
 """
 
     return caption, img
 
+
 # =========================
-# TELEGRAM PHOTO
+# TELEGRAM PHOTO SENDER
 # =========================
 def send_signal_photo(caption, image):
-    TOKEN = os.getenv("BOT_TOKEN")
-    CHAT_ID = os.getenv("CHAT_ID")
+    try:
+        TOKEN = os.getenv("BOT_TOKEN")
+        CHAT_ID = os.getenv("CHAT_ID")
 
-    url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+        url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
 
-    requests.post(url, data={
-        "chat_id": CHAT_ID,
-        "caption": caption,
-        "parse_mode": "HTML"
-    }, files={"photo": image})
+        requests.post(url, data={
+            "chat_id": CHAT_ID,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }, files={"photo": image})
+
+    except Exception as e:
+        print("Telegram error:", e)
