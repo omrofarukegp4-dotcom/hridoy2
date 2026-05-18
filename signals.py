@@ -2,12 +2,16 @@ import os
 import requests
 import pandas as pd
 import io
-import matplotlib.pyplot as plt
 from ai_engine import ai_signal
+from design_engine import create_signal_chart
+
 
 SYMBOL = "BTCUSDT"
 
 
+# =========================
+# GET DATA
+# =========================
 def get_data():
     try:
         url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval=15m&limit=100"
@@ -26,6 +30,9 @@ def get_data():
         return None
 
 
+# =========================
+# SIGNAL GENERATOR
+# =========================
 def generate_signal():
     df = get_data()
 
@@ -34,23 +41,27 @@ def generate_signal():
 
     price = df["c"].iloc[-1]
 
+    direction = "LONG" if price % 2 == 0 else "SHORT"  # simple logic
+
     rsi = 45
     macd = "bullish"
 
-    direction = "LONG" if rsi < 50 else "SHORT"
+    entry = price
+    tp = price * 1.03
+    sl = price * 0.98
 
-    caption = ai_signal(direction, price, rsi, macd)
+    # 🧠 AI TEXT
+    ai_text = ai_signal(direction, price, rsi, macd)
 
-    # simple chart
-    plt.figure(figsize=(6,3))
-    plt.plot(df["c"].tail(50))
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png")
-    buf.seek(0)
+    # 🎨 IMAGE
+    img = create_signal_chart(df, entry, tp, sl)
 
-    return caption, buf
+    return ai_text, img
 
 
+# =========================
+# SEND TO TELEGRAM
+# =========================
 def send_signal_photo(caption, image):
     TOKEN = os.getenv("BOT_TOKEN")
     CHAT_ID = os.getenv("CHAT_ID")
@@ -59,6 +70,10 @@ def send_signal_photo(caption, image):
 
     requests.post(
         url,
-        data={"chat_id": CHAT_ID, "caption": caption},
+        data={
+            "chat_id": CHAT_ID,
+            "caption": caption,
+            "parse_mode": "HTML"
+        },
         files={"photo": image}
     )
