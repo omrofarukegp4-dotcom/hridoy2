@@ -4,22 +4,40 @@ import requests
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 
 
+# =========================
+# BASE AI CALL FUNCTION
+# =========================
 def call_ai(prompt):
-    url = "https://api.openai.com/v1/chat/completions"
+    try:
+        if not OPENAI_KEY:
+            return None
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_KEY}",
-        "Content-Type": "application/json"
-    }
+        url = "https://api.openai.com/v1/chat/completions"
 
-    data = {
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7
-    }
+        headers = {
+            "Authorization": f"Bearer {OPENAI_KEY}",
+            "Content-Type": "application/json"
+        }
 
-    res = requests.post(url, headers=headers, json=data)
-    return res.json()["choices"][0]["message"]["content"]
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.7
+        }
+
+        res = requests.post(url, headers=headers, json=payload, timeout=15)
+
+        data = res.json()
+
+        return data["choices"][0]["message"]["content"]
+
+    except:
+        return None
 
 
 # =========================
@@ -27,9 +45,9 @@ def call_ai(prompt):
 # =========================
 def ai_news(title, body):
     prompt = f"""
-You are a crypto news journalist.
+You are a professional crypto news journalist.
 
-Rewrite this into a professional Telegram crypto news post.
+Rewrite this into a Telegram crypto news post.
 
 Rules:
 - catchy headline
@@ -37,35 +55,64 @@ Rules:
 - simple English
 - add emojis
 - add hashtags
-- mention market impact
+- include market impact (bullish/bearish/neutral)
 
 News:
 Title: {title}
 Body: {body}
 """
-    return call_ai(prompt)
+
+    result = call_ai(prompt)
+
+    if result:
+        return result
+
+    # fallback
+    return f"""
+📰 CRYPTO NEWS
+
+{title}
+
+{body[:200]}...
+
+#CryptoNews
+"""
 
 
 # =========================
-# 📊 MARKET AI WRITER
+# 📊 MARKET ANALYST AI
 # =========================
-def ai_market(text):
+def ai_market(raw_text):
     prompt = f"""
 You are a crypto market analyst.
 
-Turn this data into a professional market report.
+Turn this into a professional market report.
 
 Rules:
 - clear headline
-- bullish/bearish tone
+- bullish/bearish/neutral tone
 - simple explanation
 - emojis
 - hashtags
+- short and readable
 
 Data:
-{text}
+{raw_text}
 """
-    return call_ai(prompt)
+
+    result = call_ai(prompt)
+
+    if result:
+        return result
+
+    # fallback
+    return f"""
+📊 MARKET UPDATE
+
+{raw_text}
+
+#MarketUpdate
+"""
 
 
 # =========================
@@ -73,21 +120,59 @@ Data:
 # =========================
 def ai_signal(direction, price, rsi, macd):
     prompt = f"""
-You are a professional crypto trader.
+You are a professional crypto trader (institutional level).
 
-Explain this trading signal like a hedge fund analyst.
+Explain this trading signal.
+
+Rules:
+- why signal triggered
+- market logic
+- risk explanation
+- simple summary
+- emojis
+- no overcomplication
 
 Data:
 Direction: {direction}
 Price: {price}
 RSI: {rsi}
 MACD: {macd}
-
-Include:
-- why signal happened
-- market logic
-- risk note
-- simple summary
-- emojis
 """
-    return call_ai(prompt)
+
+    result = call_ai(prompt)
+
+    if result:
+        return result
+
+    # fallback
+    return f"""
+🚀 {direction} SIGNAL
+
+Price: {price}
+RSI: {rsi}
+MACD: {macd}
+
+Simple AI analysis unavailable (fallback mode)
+"""
+
+
+# =========================
+# 🧠 SENTIMENT ANALYZER (OPTIONAL BOOST)
+# =========================
+def ai_sentiment(text):
+    prompt = f"""
+Analyze crypto market sentiment.
+
+Return only one word:
+BULLISH / BEARISH / NEUTRAL
+
+Text:
+{text}
+"""
+
+    result = call_ai(prompt)
+
+    if result:
+        return result.strip().upper()
+
+    return "NEUTRAL"
