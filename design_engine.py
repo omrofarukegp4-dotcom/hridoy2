@@ -3,23 +3,12 @@ import io
 
 
 # =========================
-# 📰 NEWS DESIGN CARD
+# 📰 NEWS IMAGE
 # =========================
-def create_news_card(title, sentiment="NEUTRAL"):
-    plt.figure(figsize=(6, 3))
-    plt.title("CRYPTO NEWS", fontsize=16)
-
-    color = "green" if sentiment == "BULLISH" else "red" if sentiment == "BEARISH" else "blue"
-
-    plt.text(
-        0.5, 0.5,
-        title,
-        ha="center",
-        wrap=True,
-        fontsize=12,
-        color=color
-    )
-
+def news_card(title):
+    plt.figure(figsize=(6,3))
+    plt.title("CRYPTO NEWS", fontsize=14)
+    plt.text(0.5, 0.5, title, ha="center", wrap=True)
     plt.axis("off")
 
     buf = io.BytesIO()
@@ -29,18 +18,16 @@ def create_news_card(title, sentiment="NEUTRAL"):
 
 
 # =========================
-# 📈 SIGNAL CHART CARD
+# 📊 MARKET IMAGE
 # =========================
-def create_signal_chart(df, entry, tp, sl):
-    plt.figure(figsize=(6, 3))
+def market_card(mc, vol, btc):
+    plt.figure(figsize=(6,3))
 
-    plt.plot(df["c"].tail(50), linewidth=2)
+    labels = ["Market Cap", "Volume", "BTC Dom"]
+    values = [mc/1e12, vol/1e9, btc]
 
-    plt.axhline(entry, linestyle="--")
-    plt.axhline(tp, linestyle="--", color="green")
-    plt.axhline(sl, linestyle="--", color="red")
-
-    plt.title("AI TRADING SIGNAL")
+    plt.bar(labels, values)
+    plt.title("MARKET OVERVIEW")
 
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
@@ -49,17 +36,28 @@ def create_signal_chart(df, entry, tp, sl):
 
 
 # =========================
-# 📊 MARKET DASHBOARD
+# 🎁 AIRDROP IMAGE
 # =========================
-def create_market_dashboard(mc, vol, btc):
-    plt.figure(figsize=(6, 3))
+def airdrop_card(title):
+    plt.figure(figsize=(6,3))
+    plt.title("AIRDROP ALERT", fontsize=14)
+    plt.text(0.5, 0.5, title, ha="center", wrap=True)
+    plt.axis("off")
 
-    labels = ["Market Cap", "Volume", "BTC Dom"]
-    values = [mc / 1e12, vol / 1e9, btc]
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+    return buf
 
-    plt.bar(labels, values)
 
-    plt.title("CRYPTO MARKET OVERVIEW")
+# =========================
+# 🏦 EXCHANGE IMAGE
+# =========================
+def exchange_card(title):
+    plt.figure(figsize=(6,3))
+    plt.title("EXCHANGE UPDATE", fontsize=14)
+    plt.text(0.5, 0.5, title, ha="center", wrap=True)
+    plt.axis("off")
 
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
